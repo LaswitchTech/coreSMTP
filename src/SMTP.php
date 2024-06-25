@@ -176,7 +176,7 @@ class SMTP{
                     case"ctencoding":
                         if(is_string($value)){
 
-                            // Set Encryption
+                            // Set Encoding
                             $this->CTEncoding = $value;
 
                             // Save to Configurator
@@ -188,7 +188,7 @@ class SMTP{
                     case"sbjillegalcharacters":
                         if(is_bool($value)){
 
-                            // Set Encryption
+                            // Set Illegal Characters
                             $this->SBJIllegalCharacters = $value;
 
                             // Save to Configurator
@@ -932,4 +932,49 @@ class SMTP{
             return false;
         }
 	}
+
+    /**
+     * Check if the library is installed.
+     *
+     * @return bool
+     */
+    public function isInstalled(){
+
+        // Retrieve the path of this class
+        $reflector = new ReflectionClass($this);
+        $path = $reflector->getFileName();
+
+        // Modify the path to point to the config directory
+        $path = str_replace('src/Logger.php', 'config/', $path);
+
+        // Add the requirements to the Configurator
+        $this->Configurator->add('requirements', $path . 'requirements.cfg');
+
+        // Retrieve the list of required modules
+        $modules = $this->Configurator->get('requirements','modules');
+
+        // Check if the required modules are installed
+        foreach($modules as $module){
+
+            // Check if the class exists
+            if (!class_exists($module)) {
+                return false;
+            }
+
+            // Initialize the class
+            $class = new $module();
+
+            // Check if the method exists
+            if(method_exists($class, isInstalled)){
+
+                // Check if the class is installed
+                if(!$class->isInstalled()){
+                    return false;
+                }
+            }
+        }
+
+        // Return true
+        return true;
+    }
 }
