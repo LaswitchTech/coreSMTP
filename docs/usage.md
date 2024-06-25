@@ -49,8 +49,7 @@ class SmtpCommand extends Command {}
 ### Methods
 `Command` provides the following methods:
 
-- [encryptAction()](methods/Command/encryptAction.md)
-- [decryptAction()](methods/Command/decryptAction.md)
+- [method()](methods/Command/method.md)
 
 ## Initiate Controller for coreAPI and/or coreRouter integration
 To use `Controller`, simply create `Controller/SmtpController.php` file and extend a new instance of the `Controller` class.
@@ -68,5 +67,4 @@ class SmtpController extends Controller {}
 ### Methods
 `Controller` provides the following methods:
 
-- [encryptAction()](methods/Controller/encryptAction.md)
-- [decryptAction()](methods/Controller/decryptAction.md)
+- [method()](methods/Controller/method.md)
