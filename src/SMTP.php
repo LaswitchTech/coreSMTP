@@ -944,8 +944,11 @@ class SMTP{
         $reflector = new ReflectionClass($this);
         $path = $reflector->getFileName();
 
+        // Retrieve the filename of this class
+        $filename = basename($path);
+
         // Modify the path to point to the config directory
-        $path = str_replace('src/Logger.php', 'config/', $path);
+        $path = str_replace('src/' . $filename, 'config/', $path);
 
         // Add the requirements to the Configurator
         $this->Configurator->add('requirements', $path . 'requirements.cfg');

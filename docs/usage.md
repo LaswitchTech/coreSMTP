@@ -19,7 +19,7 @@ $SMTP = new SMTP();
 `SMTP` provides the following properties:
 
 - [Configurator](https://github.com/LaswitchTech/coreConfigurator)
-- [Logger](https://github.com/LaswitchTech/coreSMTP)
+- [Logger](https://github.com/LaswitchTech/coreLogger)
 
 ### Methods
 `SMTP` provides the following methods:
