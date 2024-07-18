@@ -556,23 +556,29 @@ class SMTP{
      * @throws Exception
      */
     public function addTemplate($name, $file = null){
-        if(is_string($name) && is_string($file)){
-            if(is_file($file)){
-                if(!isset($this->Templates[$name])){
-                    $this->Templates[$name] = $file;
-                    return true;
+        try {
+            if(is_string($name) && is_string($file)){
+                if(is_file($file)){
+                    if(!isset($this->Templates[$name])){
+                        $this->Templates[$name] = $file;
+                        return true;
+                    } else {
+                        throw new Exception("This template already exist.");
+                    }
                 } else {
-                    throw new Exception("This template already exist.");
+                    throw new Exception("Could not find the following template file: {$file}.");
                 }
             } else {
-                throw new Exception("Could not find the following template file: {$file}.");
+                throw new Exception("Both arguments must be strings.");
             }
-        } else {
-            throw new Exception("Both arguments must be strings.");
-        }
+        } catch (Exception $e) {
 
-        // Return
-        return false;
+            // Log error
+            $this->Logger->error('SMTP template error: '.$e->getMessage());
+
+            // Return
+            return false;
+        }
     }
 
     /**
@@ -583,19 +589,23 @@ class SMTP{
      * @throws Exception
      */
     public function setTemplate($name){
-        if(is_string($name)){
-            if(isset($this->Templates[$name])){
-                $this->Template = $name;
-                return true;
+        try {
+            if(is_string($name)){
+                if(isset($this->Templates[$name])){
+                    $this->Template = $name;
+                    return true;
+                } else {
+                    throw new Exception("Could not find the requested template.");
+                }
             } else {
-                throw new Exception("Could not find the requested template.");
+                throw new Exception("Argument must be string.");
             }
-        } else {
-            throw new Exception("Argument must be string.");
-        }
+        } catch (Exception $e) {
+            $this->Logger->error('SMTP template error: '.$e->getMessage());
 
-        // Return
-        return false;
+            // Return
+            return false;
+        }
     }
 
     /**
