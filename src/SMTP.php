@@ -718,6 +718,7 @@ class SMTP{
             "attachment" => [],
             "subject" => null,
             "body" => null,
+            "headers" => [],
         ];
 
         // Required Values
@@ -733,10 +734,11 @@ class SMTP{
         foreach($options as $key => $value){
             $key = strtolower($key);
             switch($key){
-                case"to":
-                case"cc":
-                case"bcc":
-                case"attachment":
+                case "to":
+                case "cc":
+                case "bcc":
+                case "attachment":
+                case "headers":
                     if(!is_array($value)){
                         $value = array($value);
                     }
