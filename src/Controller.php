@@ -21,7 +21,7 @@ class Controller extends BaseController {
         // Namespace: /smtp
 
 		// Set the controller Authentication Policy
-		$this->Public = true; // Set to false to require authentication
+		$this->Public = false; // Set to false to require authentication
 
 		// Set the controller Authorization Policy
 		$this->Permission = false; // Set to true to require a permission for the namespace used.
