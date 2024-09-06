@@ -48,7 +48,7 @@ class SMTP{
 	private $Template = null;
 
     /**
-     * Create a new phpSMTP instance.
+     * Create a new SMTP instance.
      *
      * @param  boolean|null  $debug
      * @return void
