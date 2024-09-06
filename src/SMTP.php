@@ -781,54 +781,17 @@ class SMTP{
                 throw new Exception("{$out}");
             }
 
-            // Recipients
-            if (!empty($defaults['to'])) {
-                if (!is_array($defaults['to'])) {
-                    $defaults['to'] = array($defaults['to']);
-                }
-                foreach ($defaults['to'] as $recipient) {
-                    fputs($this->Connection, "RCPT TO:<{$recipient}>" . PHP_EOL);
-                    $out = fgets($this->Connection, 1024);
-                    $this->Logger->debug("SMTP Recipient: {$out}");
-                    if (substr($out, 0, 3) != self::SMTP_OK) {
-                        throw new Exception("{$out}");
-                    }
-                }
-            }
-
-            // Reply-To
-            if (!empty($defaults['reply-to'])) {
-                if (!is_array($defaults['reply-to'])) {
-                    $defaults['reply-to'] = array($defaults['reply-to']);
-                }
-            }
-
-            // CC
-            if (!empty($defaults['cc'])) {
-                if (!is_array($defaults['cc'])) {
-                    $defaults['cc'] = array($defaults['cc']);
-                }
-                foreach ($defaults['cc'] as $cc) {
-                    fputs($this->Connection, "RCPT TO:<{$cc}>" . PHP_EOL);
-                    $out = fgets($this->Connection, 1024);
-                    $this->Logger->debug("SMTP CC Recipient: {$out}");
-                    if (substr($out, 0, 3) != self::SMTP_OK) {
-                        throw new Exception("{$out}");
-                    }
-                }
-            }
-
-            // BCC
-            if (!empty($defaults['bcc'])) {
-                if (!is_array($defaults['bcc'])) {
-                    $defaults['bcc'] = array($defaults['bcc']);
-                }
-                foreach ($defaults['bcc'] as $bcc) {
-                    fputs($this->Connection, "RCPT TO:<{$bcc}>" . PHP_EOL);
-                    $out = fgets($this->Connection, 1024);
-                    $this->Logger->debug("SMTP BCC Recipient: {$out}");
-                    if (substr($out, 0, 3) != self::SMTP_OK) {
-                        throw new Exception("{$out}");
+            // Recipients (To, CC, BCC) handling
+            foreach (['to', 'cc', 'bcc'] as $recipient_type) {
+                if (!empty($defaults[$recipient_type])) {
+                    foreach ($defaults[$recipient_type] as $recipient) {
+                        $this->Logger->debug("Sending RCPT TO for {$recipient_type}: {$recipient}");
+                        fputs($this->Connection, "RCPT TO:<{$recipient}>" . PHP_EOL);
+                        $out = fgets($this->Connection, 1024);
+                        $this->Logger->debug("SMTP {$recipient_type} Recipient: {$out}");
+                        if (substr($out, 0, 3) != self::SMTP_OK) {
+                            throw new Exception("{$out}");
+                        }
                     }
                 }
             }
@@ -841,108 +804,118 @@ class SMTP{
                 throw new Exception("{$out}");
             }
 
-            // Body
+            // Body preparation
             $html = $this->loadTemplate($defaults);
             if(!$html){
                 throw new Exception("Unable to retreive the body for the message.");
             }
             $text = $this->toText($html);
 
-            // Multipart
-            $multipart = false;
-            if(count($defaults['attachment']) > 0 || $this->hasHTML($html)){
-                $multipart = true;
-            }
-
-            // Boundary
+            // Boundary for multipart emails
             $boundary = strtoupper(uniqid(time() . '-'));
 
-            // Headers
-            $headers = '';
-            $headers .= "From: {$defaults['from']}" . PHP_EOL;
+            // Headers setup
+            $headers = "From: {$defaults['from']}" . PHP_EOL;
             $headers .= "To: " . implode(',', $defaults['to']) . PHP_EOL;
-
-            // Reply-To
             if (!empty($defaults['reply-to'])) {
                 $headers .= "Reply-To: " . implode(',', $defaults['reply-to']) . PHP_EOL;
             }
-
-            // CC
             if (!empty($defaults['cc'])) {
-            $headers .= "Cc: " . implode(',', $defaults['cc']) . PHP_EOL;
+                $headers .= "Cc: " . implode(',', $defaults['cc']) . PHP_EOL;
             }
-
-            // BCC
-            if (!empty($defaults['bcc'])) {
-            $headers .= "Bcc: " . implode(',', $defaults['bcc']) . PHP_EOL;
-            }
-
-            // Subject
             $headers .= "Subject: " . $this->sanitizeSubject($defaults['subject']) . PHP_EOL;
-
-            // Date
             $headers .= "Date: " . date('r') . PHP_EOL;
-
-            // Content-Type
             $headers .= "MIME-Version: 1.0" . PHP_EOL;
-            if($multipart){
+
+            // Add custom headers (including JSON if needed)
+            foreach ($defaults['headers'] as $header) {
+                if (is_array($header)) {
+                    // JSON-encode the header value if it is an array
+                    $header_value = json_encode($header, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $headers .= "X-Custom-Header: {$header_value}" . PHP_EOL;
+                } else {
+                    $headers .= $header . PHP_EOL;
+                }
+            }
+
+            // Check encoding and apply it to the message body
+            if ($this->CTEncoding === 'base64') {
+                $encodedTextBody = chunk_split(base64_encode($text));
+                $encodedHtmlBody = chunk_split(base64_encode($html));
+            } else {
+                $encodedTextBody = quoted_printable_encode($text);
+                $encodedHtmlBody = quoted_printable_encode($html);
+            }
+
+            // Determine if multipart
+            $multipart = (count($defaults['attachment']) > 0 || $this->hasHTML($html));
+            if ($multipart) {
                 $headers .= "Content-Type: multipart/alternative; boundary={$boundary}" . PHP_EOL . PHP_EOL;
-                $headers .= "This is a MIME-encoded multipart message" . PHP_EOL . PHP_EOL;
             }
 
-            // Message
+            // Message preparation
             $message = '';
-
-            // Insert Text Part
-            if($multipart){
+            if ($multipart) {
                 $message .= "--{$boundary}" . PHP_EOL;
             }
-            $message .= "Content-Type: text/plain; charset=UTF-8; format=flowed" . PHP_EOL;
-            // $message .= "Content-Disposition: inline" . PHP_EOL;
+
+            // Insert plain text part
+            $message .= "Content-Type: text/plain; charset=UTF-8" . PHP_EOL;
             $message .= "Content-Transfer-Encoding: " . $this->CTEncoding . PHP_EOL . PHP_EOL;
-            $message .= "{$text}" . PHP_EOL . PHP_EOL;
+            $message .= $encodedTextBody . PHP_EOL;
 
-            // Insert HTML Part
-            if($this->hasHTML($html)){
+            // Insert HTML part if present
+            if ($this->hasHTML($html)) {
                 $message .= "--{$boundary}" . PHP_EOL;
-                $message .= "Content-Type: text/html; charset=UTF-8; format=flowed" . PHP_EOL;
-                // $message .= "Content-Disposition: inline" . PHP_EOL;
+                $message .= "Content-Type: text/html; charset=UTF-8" . PHP_EOL;
                 $message .= "Content-Transfer-Encoding: " . $this->CTEncoding . PHP_EOL . PHP_EOL;
-                $message .= "{$html}" . PHP_EOL . PHP_EOL;
+                $message .= $encodedHtmlBody . PHP_EOL;
             }
 
-            // Attachments
+            // Handle attachments
             foreach ($defaults['attachment'] as $attachment) {
                 $file_path = $attachment;
                 $file_name = basename($file_path);
                 $file_mime_type = mime_content_type($file_path);
-                $file_content = file_get_contents($file_path);
+                $file_content = chunk_split(base64_encode(file_get_contents($file_path)));
                 $message .= "--{$boundary}" . PHP_EOL;
                 $message .= "Content-Type: $file_mime_type; name=\"$file_name\"" . PHP_EOL;
                 $message .= "Content-Transfer-Encoding: base64" . PHP_EOL;
                 $message .= "Content-Disposition: attachment; filename=\"$file_name\"" . PHP_EOL . PHP_EOL;
-                $message .= chunk_split(base64_encode($file_content));
+                $message .= $file_content . PHP_EOL;
             }
 
-            // Concatenate Message
-            $concatenate = trim($headers . $message) . PHP_EOL . PHP_EOL;
-            if($multipart){
-                $concatenate .= "--{$boundary}--" . PHP_EOL;
+            // Finalize message
+            if ($multipart) {
+                $message .= "--{$boundary}--" . PHP_EOL;
             }
-            $concatenate .= "." . PHP_EOL;
-            $this->Logger->debug("SMTP Concatenate: " . PHP_EOL . trim($concatenate));
+            $message .= "." . PHP_EOL;
+
+            // Log the message
+            $this->Logger->debug("SMTP Message: " . PHP_EOL . $headers . $message);
 
             // Send message
-            fputs($this->Connection, $concatenate);
+            fputs($this->Connection, $headers . $message);
             $out = fgets($this->Connection, 1024);
             $this->Logger->debug("SMTP Message: {$out}");
+
+            // Check if the message was sent successfully
             if (substr($out, 0, 3) != self::SMTP_OK) {
                 throw new Exception("{$out}");
             }
 
+            // Extract the Message-ID if present in the response
+            if (preg_match('/<(.+)>/', $out, $matches)) {
+                $messageId = $matches[1];
+                $this->Logger->success("Message-ID: {$messageId}");
+            }
+
+            // return the message
             $this->Logger->success("Email sent successfully");
-            return $concatenate;
+            return $headers . $message;
         } catch (Exception $e) {
+
+            // Log error
             $this->Logger->error('SMTP Error: '.$e->getMessage());
             return false;
         }
