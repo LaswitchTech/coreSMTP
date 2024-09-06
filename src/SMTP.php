@@ -756,8 +756,11 @@ class SMTP{
             }
         }
 
+        $this->Logger->debug("Configuration: ".json_encode($defaults, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
         // Try to send the email
         try {
+
             // Check if the connection is established
             if (!$this->Connection) {
                 throw new Exception("No connection found");
