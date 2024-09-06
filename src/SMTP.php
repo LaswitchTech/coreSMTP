@@ -40,7 +40,7 @@ class SMTP{
 	private $Encryption = null;
 	private $Username = null;
 	private $Password = null;
-	private $CTEncoding = 'quoted-printable';
+	private $CTEncoding = 'base64'; // quoted-printable or base64
 	private $SBJIllegalCharacters = false;
 
 	// Templates and Settings
